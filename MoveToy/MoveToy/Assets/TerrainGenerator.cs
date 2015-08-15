@@ -5,8 +5,7 @@ public class TerrainGenerator : MonoBehaviour
 {
 	public Transform terrainObject;
 
-	// Use this for initialization
-	void Start ()
+	void Start()
 	{
 		for (int i = 0; i < NUM_OBJECTS; ++i) {
 			Transform item = Instantiate(terrainObject);
@@ -21,8 +20,7 @@ public class TerrainGenerator : MonoBehaviour
 		}
 	}
 	
-	// Update is called once per frame
-	void Update ()
+	void Update()
 	{
 	}
 
