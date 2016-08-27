@@ -5,36 +5,38 @@ This doc describes how we plan to implement player navigation in the move toy.
 
 ## Navigation
 
+Navigation in nullZERO is a little atypical, since there's no gravity vector to orient the map around.
+
 Navigation is a state machine with two distinct modes, based on whether or not the player is attached to a particular surface.
 The player controls when to transition between these two states and how.
 
 ### Walking
 
 When the player is "walking," they are attached to a surface, and move over the surface.
-Players in a "walking" state always stay attached to the surface, and when they walk off an edge, they walk onto the adjacent edge.
+Players in a "walking" state always stay attached to the surface, and when they walk off an edge, they continue onto the adjacent face along that edge.
 Players never "fall off" an object while in the walking state.
 
 This is done using an anchor point projected onto the navigation surface.
 When the player moves, we internally move the anchor point along the surface, rolling over to the adjacent edge as needed.
 The movement direction is calculated by projecting the player's look vector onto the edge which houses the anchor point.
 
-When moving his way moves the player over an edge, the anchor point is moved to equivalent point on the adjacent edge.
-We subtract the distance the player already moved to get to the edge, and process the remaining distance on the new edge.
-This happens as many times as necessary until the player has moved the complete distance required.
+When moving the player over an edge this way, the anchor point is moved to equivalent point on the adjacent face.
+We subtract the distance the player already moved to get to the edge, and process the remaining distance along the new face.
+This happens as many times as necessary until the player has moved the complete distance.
 
 After moving the player, we compute the normal from the surface at the anchor point, and use that to position and orient the player.
-
-To smooth the player orientation when walking over a sharp edge, we sweep out multiple points around the anchor point and compute all those normals.
-We then average together all those normals to produce a final normal for the player pawn.
-As the player nears the edge, we thus smoothly interpolate the pawn's orientation around the edge.
+To smooth the player orientation when walking over a sharp edge, we sweep out multiple points around the anchor point and compute normals at each point.
+We average the results together to obtain a smoothed normal to orient the player.
+This normal swings gradually as the player rounds an edge, at a speed proportional to how far we sweep, and with precision proportional to the number of sweeped points.
 
 Note the pawn's look direction is relative to the pawn's orientation, as if the look direction were the head and the pawn's orientation were the body.
+When the player rounds a corner, the look direction rounds the corner too.
 
 ### Jumping
 
 While a player is walking, they can press the jump button to propel themselves off the surface in the direction they were looking.
 In the transitionary state, the player accelerates away from the anchor point at a rate inversely proportional to the distance from the anchor point.
-(As the player gets farther from the anchor point, the rate of acceleration falls off; if the player started far from the anchor point, they don't accelerate a ton.)
+(As the player gets farther from the anchor point, the rate of acceleration falls off; if the player started far from the anchor point, they don't accelerate much.)
 
 After the player is a fixed difference away from the anchor point, the player is no longer accelerating and is in the "jumping" state.
 If the player releases the jump button, the player stops acclerating immediately and enters the "jumping" state.
@@ -57,12 +59,13 @@ Because the landing point is guided by looking, the look vector changes inversel
 
 If the player lets go of the jump button before the pawn hits the anchor point, the pawn goes back to the jumping state.
 Otherwise, if the pawn hits the anchor point while the user is holding the jump button, the pawn enters a walking state.
+This behavior allows advanced players to use nearby objects to catapult themselves forward.
 
 ### Dynamic Bodies
 
 The discussion above assumes all surfaces the player attaches to / accelerates off are static / immovable.
 We can also support dynamic bodies, which have small enough mass to be moved by the player when jumping / landing.
-From a gameplay perspective, this is like landing on / jumping off debris in zero-g.
+This could be used in gameplay to allow the player to interact with smaller objects / debris.
 
 When the player is attaching to a dynamic body, we compute the anchor point the player is attaching to, and pull the body toward the player from the anchor point.
 We compute the body's linear and rotational acceleration from the anchor point and the center of mass, using some basic Newtonian mechanics.
@@ -169,7 +172,7 @@ That's because we want the CPU budget for building this octree to be accounted f
 Frames which need this octree should not glitch / lag / skip more often than frames which do not need an octree.
 If our octree implementation is slow, it should drop our framerate uniformly, so that we can tweak it to run more quickly uniformly.
 
-## Unity Entity/Component Design
+## Unity Integration
 
 ## Debug Harness
 
