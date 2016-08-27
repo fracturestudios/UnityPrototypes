@@ -5,7 +5,7 @@ This doc describes how we plan to implement player navigation in the move toy.
 
 ## Navigation
 
-Navigation in nullZERO is a little atypical, since there's no gravity vector to orient the map around.
+Navigation in nullZERO is a little atypical, since there's no gravity to orient the map around.
 
 Navigation is a state machine with two distinct modes, based on whether or not the player is attached to a particular surface.
 The player controls when to transition between these two states and how.
@@ -123,6 +123,10 @@ A valid navigation mesh has exactly two adjacent faces per edge.
 Each navigation mesh also has a k-d tree which spatially subdivides the mesh's faces, in mesh space.
 When trying to project a point onto the mesh, or trace a ray through the mesh, this k-d tree is used to efficiently reject unwanted faces.
 
+Each navigation mesh also has an axis-aligned bounding box in its own object space.
+To create its world-space axis-aligned bounding box, the navigation mesh transforms its object space AABB into world space and uses the resulting vertices as the bounds of its world-aligned AABB.
+This means the world-space AABB may not be as tight as the object-space AABB, but computing the final AABB is computationally very cheap.
+
 ### Usage
 
 Player pawns using a navigation mesh typically cache
@@ -174,8 +178,103 @@ If our octree implementation is slow, it should drop our framerate uniformly, so
 
 ## Unity Integration
 
-## Debug Harness
+### `Navigation` and `NavigationMesh`
+
+Each scene has a single `Naviagation` component which owns navigation for the scene.
+Components which want to read navigation information find this component and query it.
+GameObjects which are navigable are created with a `Navigable` component, which submits the object's mesh geometry to `Navigation` to be added to the scene.
+
+The `Navigation` component has a collection of `NavigationMesh` objects, each of which is a separate mesh in the scene.
+At scene load time, each `Navigable` component submits its mesh geometry to `Navigation`.
+`Navigation` generates a `NavigationMesh` from that geometry, and adds it the scene.
+It checks whether the new `NavigationMesh` intersects any other meshes and, if it does, combines the meshes together.
+
+Every scene update, `Navigation` builds an octree containing each `NavigationMesh` in the scene, using the mesh's axis-aligned bounding box.
+This octree is used to accelerate queries to find certain meshes (e.g. the set of meshes within a certain distance from the player).
+
+Components that need navigation information, like `PlayerNavigation` query the `Navigation` object to find individual `NavigationMesh` objects.
+The object can cache the `NavigationMesh` by reference and use it on subsequent game frame updates.
+
+### `Navigable`
+
+Navigable is a simple component used to submit a mesh to the `Navigation` component for processing at scene load time.
+It can be added to rendered and non-rendered meshes.
+For high-poly meshes, it's generally preferable to create a separate lower-res navigation mesh for that component, add `Navigable`, and then remove rendering from the mesh.
+That low-poly mesh contains the low-poly navigation surface for the high-poly display mesh.
+
+### `PlayerNavigation`
+
+Processes user input and moves the player accordingly, per the first section in this document.
+Queries the `Navigation` component to discover scene navigation geometry.
 
 ## Implementation Plan
 
+### Design changes for merging meshes
+
+In order to support dynamic meshes, we're going to need to have some `Transform` in the scene which corresponds with the `NavigationMesh`.
+This is a problem with the current plan if we want the dynamic body to also support complex geometry that was merged from multiple primitive meshes.
+
+I think the solution here is to only merge meshes under a single subtree of the NavigationMesh component.
+That is, you have to parent/prefab all the sub-meshes to a single GameObject with a single `Navigable` component.
+Thus we only run the merge logic per `Navigable`.
+
+What's interesting is, if we do that, we can have `NetworkMesh` be a component, and don't have need for a `Navigable`.
+On the other hand, I still like that our current design gives us the flexibility to do one whole-scene spatial acceleration DS if we wanted to.
+
+### Basic Navigation Meshes
+
+* `NavigationMesh` object with stubbed query APIs
+* `Navigation` mesh with registration APIs
+* `Navigable` component that gathers all meshes in its subtree and submits them to the `Navigation` component
+* Set up a test scene with a single flat box that was made into a navigation mesh
+* Implement the navigation component / navigation mesh types
+* Visual debugging to manually verify the different types of queries are working
+
+### Walking
+
+* Compute the player anchor point, visual debugging to verify this works
+* Anchor point movement on the box, debugging to verify this works
+* Anchor point movement around the box, debugging to verify this works
+* Normal vector calculation based on face normal
+* Visual debugging to make sure the normal vector is working
+* Smooth normal vector by sweeping out multiple points and averaging the normals
+
+### Navigation Mesh Merging
+
+* Test scene with two boxes making a convex "V" shape, player is inside the V
+* Implement mesh merging for a single mesh being submitted by a `Navigable` component
+* Verify the anchor point walks across the V and automatically gets on the right side of the mesh
+
+### Jumping
+
+* Simple test scene consising of a giant box made from navigable surfaces
+* State machine in `PlayerNavigation`
+* Implementation for jumping-off state
+* Implementation for jumping / in-flight state
+* Implementation for landing state
+
+### Spatial Acceleration
+
+* Make a very large test scene with a ton of randomly-generated navigable geometry
+* K-D tree per mesh
+* Octree per scene
+* Verify we're significantly improving performance
+
+### Dynamic Bodies
+
+* Test scene with a single dynamic object
+* Wire up `Navigation` to track the `Transform` of any dynamic `NavigationMesh`
+
+### Movement HUD
+
+* Spec
+* Prototype
+
+### Full Demo
+
+Unifieid demo scene that includes everything we've done so far
+
+* Large enclosed space with an irregular shape
+* Generate static geometry in a regular pattern, where all static bodies intersect with the walls
+* Generate dynamic geometry randomly, in the middle of the room
 
