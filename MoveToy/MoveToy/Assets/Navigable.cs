@@ -29,6 +29,8 @@ public class Navigable : MonoBehaviour
 
         // Register the navigation mesh to the scene
         nav.Add(mesh);
+
+        DebugRenderNavMesh(mesh); // TODO DEBUG
     }
 
     private void BuildNavigationMesh(NavigationMesh navMesh)
@@ -224,5 +226,36 @@ public class Navigable : MonoBehaviour
 
             navMesh.Faces[i] = f;
         }
+    }
+
+    void DebugRenderNavMesh(NavigationMesh navMesh)
+    {
+        List<Vector3> vertices = new List<Vector3>();
+        List<Vector3> normals = new List<Vector3>();
+        List<int> triangles = new List<int>();
+
+        for (int i = 0; i < navMesh.Faces.Count; ++i)
+        {
+            NavigationMesh.Face f = navMesh.Faces[i];
+
+            vertices.Add(navMesh.Vertices[f.A]);
+            vertices.Add(navMesh.Vertices[f.B]);
+            vertices.Add(navMesh.Vertices[f.C]);
+
+            normals.Add(f.Normal);
+            normals.Add(f.Normal);
+            normals.Add(f.Normal);
+
+            triangles.Add(vertices.Count - 3);
+            triangles.Add(vertices.Count - 2);
+            triangles.Add(vertices.Count - 1);
+        }
+
+        Mesh mesh = new Mesh();
+        GetComponent<MeshFilter>().mesh = mesh;
+
+        mesh.vertices = vertices.ToArray();
+        mesh.normals = normals.ToArray();
+        mesh.triangles = triangles.ToArray();
     }
 }
