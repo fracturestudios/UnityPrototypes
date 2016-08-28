@@ -31,10 +31,12 @@ public class NavigationMesh
     // Returns the index in this.Faces of the face which contains the nearest
     // point, as well as the nearest point in this mesh's object space.
     //
-    public void FindNearest(Vector3 pos,
-                            out int face,
-                            out Vector3 point)
+    public void NearestPoint(Vector3 pos, out int face, out Vector3 point)
     {
+        // TODO FUTURE: This could be optimized using a spatial subdivision
+        // data structure. March outward from the given position until finding
+        // an occupied cell, and consider only triangles in that cell
+
         bool haveNearest = false;
         int nearestFace = 0;
         float nearestDistanceSq = 0;
@@ -105,6 +107,10 @@ public class NavigationMesh
                           out int face,
                           out Vector3 intersect)
     {
+        // TODO FUTURE: This could be optimized using a spatial subdivision
+        // data structure. March the ray through the data structure and
+        // consider only triangles found in the first occupied region.
+        
         face = -1;
         intersect = Vector3.zero;
 

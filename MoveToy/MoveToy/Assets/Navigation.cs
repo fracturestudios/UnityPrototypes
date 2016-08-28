@@ -19,13 +19,13 @@ public class Navigation : MonoBehaviour
     // Adds a new navigation mesh to the scene
     public void Add(NavigationMesh mesh)
     {
-        throw new NotImplementedException();
+        meshes.Add(mesh);
     }
 
     // Removes a navigation mesh from the scene
     public void Remove(NavigationMesh mesh)
     {
-        throw new NotImplementedException();
+        meshes.Remove(mesh);
     }
 
     // Enumerates all registered meshes in the scene
@@ -40,7 +40,29 @@ public class Navigation : MonoBehaviour
     //
     public IEnumerable MeshesNear(Vector3 pos, float distance)
     {
-        throw new NotImplementedException();
+        // TODO FUTURE: This could be optimized using a spatial subdivision
+        // data structure. Consider only cells that are within the given
+        // distance from the given position.
+        //
+        // This could be further optimized by keeping and checking an
+        // axis-aligned bounding box for each mesh, to fast-reject meshes whose
+        // entire bounding box is too far away.
+
+        foreach (NavigationMesh mesh in meshes)
+        {
+            // Convert the world-space position into the 
+            Matrix4x4 trans = mesh.Transform.worldToLocalMatrix;
+            Vector3 point = trans.MultiplyPoint3x4(pos);
+            
+            int nearestFace;
+            Vector3 nearestPoint;
+            mesh.NearestPoint(point, out nearestFace, out nearestPoint);
+
+            if ((nearestPoint - point).sqrMagnitude < distance * distance)
+            {
+                yield return mesh;
+            }
+        }
     }
 }
 
