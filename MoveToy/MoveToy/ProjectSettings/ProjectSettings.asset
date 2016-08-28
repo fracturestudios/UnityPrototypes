@@ -438,8 +438,12 @@ PlayerSettings:
   WebGL::useEmbeddedResources: 0
   XboxOne::enus: 1
   stringPropertyNames:
+  - Build_ServiceEnabled::Build_ServiceEnabled
+  - UNet_ServiceEnabled::UNet_ServiceEnabled
   - WebGL::emscriptenArgs
   - WebGL::template
+  Build_ServiceEnabled::Build_ServiceEnabled: False
+  UNet_ServiceEnabled::UNet_ServiceEnabled: True
   WebGL::emscriptenArgs: 
   WebGL::template: APPLICATION:Default
   cloudProjectId: 5ec916e4-d88d-4cf1-a080-6f68d0842d8c

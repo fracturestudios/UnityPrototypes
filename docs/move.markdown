@@ -92,8 +92,6 @@ A navigation mesh caches geometry information about the object which is used to 
 * Given an arbitrary point, find the nearest face
 * Given an arbitrary point and a face, find the nearest point on that face
 * Given an origin point and a direction, find the first face that ray intersects, as well as the intersection point
-* Given an origin point on a face and a direction along the face, find the edge that direction vector intersects.
-* Given a face and an edge, find the adjacent face on that edge
 
 ### Data Structure
 
