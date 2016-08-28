@@ -21,9 +21,16 @@ public class NavigationMesh
         public Vector3 Normal; // Cached normal vector pointing out of the face's front
     }
 
-    public List<Vector3> Vertices; // All vertices in the mesh
-    public List<Face> Faces;       // All triangles in this mesh
-    public Transform Transform;    // The object -> world transformation
+    public List<Vector3> Vertices { get; set; } // All vertices in the mesh
+    public List<Face> Faces { get; set; }       // All triangles in this mesh
+    public Transform Transform { get; set; }    // The object -> world transformation
+
+    public NavigationMesh(Transform transform)
+    {
+        Vertices = new List<Vector3>();
+        Faces = new List<Face>();
+        Transform = transform;
+    }
 
     // Finds the point in this mesh closest to the given point.
     // The input position should be defined in this mesh's object space.
