@@ -12,6 +12,8 @@ using UnityEngine;
 //
 public class Navigable : MonoBehaviour
 {
+    public bool DebugConstruction = false;
+
     public void Start()
     {
         // Find the scene's Navigation component
@@ -27,10 +29,15 @@ public class Navigable : MonoBehaviour
         NavigationMesh mesh = new NavigationMesh(GetComponent<Transform>());
         BuildNavigationMesh(mesh);
 
+        mesh.Transform = GetComponent<Transform>();
+
         // Register the navigation mesh to the scene
         nav.Add(mesh);
 
-        DebugRenderNavMesh(mesh); // TODO DEBUG
+        if (DebugConstruction)
+        {
+            DebugRenderNavMesh(mesh);
+        }
     }
 
     private void BuildNavigationMesh(NavigationMesh navMesh)

@@ -57,31 +57,78 @@ public class NavigationMesh
             Vector3 b = Vertices[f.B];
             Vector3 c = Vertices[f.C];
 
-            // Project the position on this triangle
-            Vector3 projected = pos - Vector3.Dot(pos, f.Normal) * f.Normal;
+            // Project the position on this triangle's plane
+            Vector3 vec = pos - a;
+            Vector3 projected = vec - Vector3.Dot(vec, f.Normal) * f.Normal + a;
 
-            // Convert the projected point into barycentric coordinates
-            float area = .5f * Vector3.Cross(b - a, c - a).magnitude;
-            float u = .5f * Vector3.Cross(b - projected, c - projected).magnitude / area;
-            float v = .5f * Vector3.Cross(a - projected, c - projected).magnitude / area;
-            float w = .5f * Vector3.Cross(a - projected, b - projected).magnitude / area;
+            // Figure out if the projected point is inside the triangle or not.
+            // If it's not, it'll be on the wrong side of exactly one edge.
+            //
+            bool isOutside = false;
+            Vector3 e1 = Vector3.zero;
+            Vector3 e2 = Vector3.zero;
 
-            // Clamp the coordinates to all lie within the triangle
-            u = Mathf.Clamp(u, 0f, 1f);
-            v = Mathf.Clamp(v, 0f, 1f);
-            w = Mathf.Clamp(w, 0f, 1f);
-            
-            // Convert the barycentric coordinates back into cartesian space
-            Vector3 pt = u * a + v * b + w * c;
-            
+            Vector3 ab = b - a;
+            Vector3 bc = c - b;
+            Vector3 ca = a - c;
+
+            Vector3 ap = projected - a;
+            Vector3 bp = projected - b;
+            Vector3 cp = projected - c;
+
+            if (Vector3.Dot(Vector3.Cross(ab, -ca), Vector3.Cross(ab, ap)) < 0)
+            {
+                isOutside = true;
+                e1 = a;
+                e2 = b;
+            }
+
+            if (Vector3.Dot(Vector3.Cross(bc, -ab), Vector3.Cross(bc, bp)) < 0)
+            {
+                isOutside = true;
+                e1 = b;
+                e2 = c;
+            }
+
+            if (Vector3.Dot(Vector3.Cross(ca, -bc), Vector3.Cross(ca, cp)) < 0)
+            {
+                isOutside = true;
+                e1 = c;
+                e2 = a;
+            }
+
+            // If the point is outside the triangle, move it to the nearest
+            // point on the edge of the triangle
+            //
+            if (isOutside)
+            {
+                // Project the point onto the edge
+                Vector3 edge = (e2 - e1).normalized;
+                projected = Vector3.Dot(projected - e1, edge) * edge + e1;
+
+                // If this put the projected point beyond the boundary of the
+                // edge, move the point to the boundary
+                //
+                float edgeLen2 = (e2 - e1).sqrMagnitude;
+
+                if ((projected - e1).sqrMagnitude > edgeLen2)
+                {
+                    projected = e2;
+                }
+                else if ((projected - e2).sqrMagnitude > edgeLen2)
+                {
+                    projected = e1;
+                }
+            }
+
             // See if this is the closest we've gotten to 'pos' so far
-            float distanceSq = (pt - projected).sqrMagnitude;
+            float distanceSq = (projected - pos).sqrMagnitude;
             if (!haveNearest || distanceSq < nearestDistanceSq)
             {
                 haveNearest = true;
                 nearestFace = i;
                 nearestDistanceSq = distanceSq;
-                nearestPoint = pt;
+                nearestPoint = projected;
             }
         }
 
@@ -151,6 +198,9 @@ public class NavigationMesh
             // Convert the point into barycentric coordinates. If any coordinate is
             // outside [0, 1], then the point is outside the triangle and doesn't
             // intersect
+            //
+            // TODO can we do some sign determinations with dot products here?
+            // Is all full conversion gonna be overkill?
             //
             float area = .5f * Vector3.Cross(b - a, c - a).magnitude;
             float u = .5f * Vector3.Cross(b - point, c - point).magnitude / area;
