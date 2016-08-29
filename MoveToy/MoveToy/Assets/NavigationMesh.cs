@@ -188,26 +188,27 @@ public class NavigationMesh
             // and never intersects the triangle.
             //
             float t = -1f * Vector3.Dot(origin - a, n) / Vector3.Dot(direction, n);
-            if (t < 0f)
+            if (t < 0f || float.IsInfinity(t))
             {
                 continue;
             }
 
             Vector3 point = origin + t * direction;
 
-            // Convert the point into barycentric coordinates. If any coordinate is
-            // outside [0, 1], then the point is outside the triangle and doesn't
-            // intersect
+            // If the point of intersection with the plane is outside the
+            // triangle, skip this triangle
             //
-            // TODO can we do some sign determinations with dot products here?
-            // Is all full conversion gonna be overkill?
-            //
-            float area = .5f * Vector3.Cross(b - a, c - a).magnitude;
-            float u = .5f * Vector3.Cross(b - point, c - point).magnitude / area;
-            float v = .5f * Vector3.Cross(a - point, c - point).magnitude / area;
-            float w = .5f * Vector3.Cross(a - point, b - point).magnitude / area;
+            Vector3 ab = b - a;
+            Vector3 bc = c - b;
+            Vector3 ca = a - c;
 
-            if (u < 0f || u > 1f || v < 0f || v > 1f || w < 0f || w > 1f)
+            Vector3 ap = point - a;
+            Vector3 bp = point - b;
+            Vector3 cp = point - c;
+
+            if (Vector3.Dot(Vector3.Cross(ab, -ca), Vector3.Cross(ab, ap)) < 0 ||
+                Vector3.Dot(Vector3.Cross(bc, -ab), Vector3.Cross(bc, bp)) < 0 ||
+                Vector3.Dot(Vector3.Cross(ca, -bc), Vector3.Cross(ca, cp)) < 0)
             {
                 continue;
             }
@@ -215,7 +216,7 @@ public class NavigationMesh
             // Otherwise we found and intersection; see if this is the first
             // triangle we would have hit of the triangles considered so far
             //
-            if (!foundNearest || nearestDistance < t)
+            if (!foundNearest || t < nearestDistance)
             {
                 foundNearest = true;
                 nearestFace = i;
