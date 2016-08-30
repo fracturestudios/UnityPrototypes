@@ -15,7 +15,7 @@ InputManager:
     altPositiveButton: 
     gravity: 0
     dead: 0
-    sensitivity: .100000001
+    sensitivity: 0.1
     snap: 0
     invert: 0
     type: 1
@@ -31,7 +31,7 @@ InputManager:
     altPositiveButton: 
     gravity: 0
     dead: 0
-    sensitivity: .100000001
+    sensitivity: 0.1
     snap: 0
     invert: 0
     type: 1
@@ -47,7 +47,7 @@ InputManager:
     altPositiveButton: 
     gravity: 0
     dead: 0
-    sensitivity: .100000001
+    sensitivity: 0.1
     snap: 0
     invert: 0
     type: 0
@@ -63,7 +63,7 @@ InputManager:
     altPositiveButton: 
     gravity: 0
     dead: 0
-    sensitivity: .100000001
+    sensitivity: 0.1
     snap: 0
     invert: 0
     type: 0
@@ -79,7 +79,7 @@ InputManager:
     altPositiveButton: 
     gravity: 0
     dead: 0
-    sensitivity: .100000001
+    sensitivity: 0.1
     snap: 0
     invert: 0
     type: 0
@@ -95,7 +95,7 @@ InputManager:
     altPositiveButton: 
     gravity: 0
     dead: 0
-    sensitivity: .100000001
+    sensitivity: 0.1
     snap: 0
     invert: 0
     type: 0
@@ -111,7 +111,7 @@ InputManager:
     altPositiveButton: 
     gravity: 0
     dead: 0
-    sensitivity: .100000001
+    sensitivity: 0.1
     snap: 0
     invert: 0
     type: 0
@@ -127,7 +127,71 @@ InputManager:
     altPositiveButton: 
     gravity: 0
     dead: 0
-    sensitivity: .100000001
+    sensitivity: 0.1
+    snap: 0
+    invert: 0
+    type: 0
+    axis: 1
+    joyNum: 0
+  - serializedVersion: 3
+    m_Name: AnchorForward
+    descriptiveName: 
+    descriptiveNegativeName: 
+    negativeButton: 
+    positiveButton: up
+    altNegativeButton: 
+    altPositiveButton: 
+    gravity: 0
+    dead: 0
+    sensitivity: 0.1
+    snap: 0
+    invert: 0
+    type: 0
+    axis: 1
+    joyNum: 0
+  - serializedVersion: 3
+    m_Name: AnchorBackward
+    descriptiveName: 
+    descriptiveNegativeName: 
+    negativeButton: 
+    positiveButton: down
+    altNegativeButton: 
+    altPositiveButton: 
+    gravity: 0
+    dead: 0
+    sensitivity: 0.1
+    snap: 0
+    invert: 0
+    type: 0
+    axis: 1
+    joyNum: 0
+  - serializedVersion: 3
+    m_Name: AnchorLeft
+    descriptiveName: 
+    descriptiveNegativeName: 
+    negativeButton: 
+    positiveButton: left
+    altNegativeButton: 
+    altPositiveButton: 
+    gravity: 0
+    dead: 0
+    sensitivity: 0.1
+    snap: 0
+    invert: 0
+    type: 0
+    axis: 1
+    joyNum: 0
+  - serializedVersion: 3
+    m_Name: AnchorRight
+    descriptiveName: 
+    descriptiveNegativeName: 
+    negativeButton: 
+    positiveButton: right
+    altNegativeButton: 
+    altPositiveButton: 
+    gravity: 0
+    dead: 0
+    sensitivity: 0.1
     snap: 0
     invert: 0
     type: 0
