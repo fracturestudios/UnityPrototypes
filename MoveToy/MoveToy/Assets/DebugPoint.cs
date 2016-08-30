@@ -57,8 +57,8 @@ public class DebugPoint : MonoBehaviour
                                          out Vector3 intersection)
     {
         // To do this intersection, we'll first construct a plane containing 
-        // points A and B, perpendicular to the plane containing points a, b
-        // and p. Once/ we've done that, the intersection point is just the
+        // points a and b, perpendicular to the plane containing points a, b
+        // and p. Once we've done that, the intersection point is just the
         // point at which the ray intersects with the plane.
         
         // The plane normal is the component of pa perpendicular to ba
@@ -131,72 +131,69 @@ public class DebugPoint : MonoBehaviour
 			worldDelta += speed * dt * right;
 		}
 
-        if (worldDelta != Vector3.zero)
+        while (worldDelta.sqrMagnitude > Mathf.Epsilon)
         {
-            Quaternion netRotation = Quaternion.identity;
-
             Vector3 objectPos = m_mesh.Transform.worldToLocalMatrix.MultiplyPoint3x4(transform.position);
             Vector3 objectDelta = m_mesh.Transform.worldToLocalMatrix.MultiplyVector(worldDelta);
             Vector3 objectDir = objectDelta.normalized;
 
-            for (;;)
+            // Figure out which edge we'll hit if we keep travelling this direction
+            NavigationMesh.Face f = m_mesh.Faces[m_currentFace];
+            Vector3 a = m_mesh.Vertices[f.A];
+            Vector3 b = m_mesh.Vertices[f.B];
+            Vector3 c = m_mesh.Vertices[f.C];
+
+            Vector3 edgeIntersect = Vector3.zero;
+            int neighbor = -1;
+
+            if (RayLineIntersect(objectPos, objectDir, a, b, out edgeIntersect))
             {
-                // Figure out which edge we'll hit if we keep travelling this direction
-                NavigationMesh.Face f = m_mesh.Faces[m_currentFace];
-                Vector3 a = m_mesh.Vertices[f.A];
-                Vector3 b = m_mesh.Vertices[f.B];
-                Vector3 c = m_mesh.Vertices[f.C];
-
-                Vector3 edgeIntersect = Vector3.zero;
-                int neighbor = -1;
-
-                if (RayLineIntersect(objectPos, objectDir, a, b, out edgeIntersect))
-                {
-                    neighbor = f.AdjacentAB;
-                }
-                else if (RayLineIntersect(objectPos, objectDir, b, c, out edgeIntersect))
-                {
-                    neighbor = f.AdjacentBC;
-                }
-                else if (RayLineIntersect(objectPos, objectDir, c, a, out edgeIntersect))
-                {
-                    neighbor = f.AdjacentCA;
-                }
-                else
-                {
-                    throw new Exception("Movement ray does not intersect any edge of current face");
-                }
-
-                // If we didn't hit an edge, move the full distance and be done
-                if (objectDelta.sqrMagnitude < (edgeIntersect - objectPos).sqrMagnitude)
-                {
-                    objectPos = objectPos + objectDelta;
-                    break;
-                }
-
-                // We hit the edge of the triangle
-                //
-                // - Move the player to the edge
-                // - Rotate the player around the edge to orient with the next
-                //   face's normal
-                // - Subtract the travelled distance from the total distance
-                //   left to travel
-                //
-                NavigationMesh.Face adjacent = m_mesh.Faces[neighbor];
-
-                Quaternion rotation = Quaternion.FromToRotation(f.Normal, adjacent.Normal);
-                float distanceTravelled = (edgeIntersect - objectPos).magnitude;
-
-                objectPos = edgeIntersect;
-                objectDir = rotation * objectDir;
-                objectDelta = objectDir * (objectDelta.magnitude - distanceTravelled);
-
-                netRotation = rotation * netRotation;
-                m_currentFace = neighbor;
+                neighbor = f.AdjacentAB;
+            }
+            else if (RayLineIntersect(objectPos, objectDir, b, c, out edgeIntersect))
+            {
+                neighbor = f.AdjacentBC;
+            }
+            else if (RayLineIntersect(objectPos, objectDir, c, a, out edgeIntersect))
+            {
+                neighbor = f.AdjacentCA;
+            }
+            else
+            {
+                Debug.Log("Movement ray does not intersect any edge of current face");
+                break;
             }
 
+            // If we didn't hit an edge, move the full distance and be done
+            if (objectDelta.sqrMagnitude < (edgeIntersect - objectPos).sqrMagnitude)
+            {
+                transform.position = m_mesh.Transform.localToWorldMatrix.MultiplyPoint3x4(objectPos + objectDelta);
+                worldDelta = Vector3.zero;
+
+                break;
+            }
+
+            // We hit the edge of the triangle
+            //
+            // - Move the player to the edge
+            // - Rotate the player around the edge to orient with the next
+            //   face's normal
+            // - Subtract the travelled distance from the total distance
+            //   left to travel
+            // - Continue on to the adjacent face
+            //
+            m_currentFace = neighbor;
+            NavigationMesh.Face adjacent = m_mesh.Faces[m_currentFace];
+
+            Vector3 objectMovement = edgeIntersect - objectPos;
+            worldDelta = worldDelta - m_mesh.Transform.localToWorldMatrix.MultiplyVector(objectMovement);
+
+            objectPos = edgeIntersect;
             transform.position = m_mesh.Transform.localToWorldMatrix.MultiplyPoint3x4(objectPos);
-            transform.rotation = netRotation * transform.rotation;
+
+            Quaternion rotation = Quaternion.FromToRotation(f.Normal, adjacent.Normal);
+            transform.rotation = rotation * transform.rotation;
+            worldDelta = rotation * worldDelta;
         }
 	}
 }
