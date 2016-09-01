@@ -50,35 +50,90 @@ public class DebugPoint : MonoBehaviour
     // which the ray intersects the given line segment. If the return value is
     // false, the out-param should not be used.
     //
-    private static bool RayLineIntersect(Vector3 p,
-                                         Vector3 d,
-                                         Vector3 a,
-                                         Vector3 b,
+    private static bool RayLineIntersect(Vector3 p, // Ray origin
+                                         Vector3 d, // Ray direction
+                                         Vector3 a, // Vertex on edge
+                                         Vector3 b, // Vertex on edge
+                                         Vector3 c, // Third vertex of triangle
                                          out Vector3 intersection)
     {
         // To do this intersection, we'll first construct a plane containing 
         // points a and b, perpendicular to the plane containing points a, b
         // and p. Once we've done that, the intersection point is just the
         // point at which the ray intersects with the plane.
+
+        float epsilon = 1e-6f;
+        float epsilon2 = epsilon * epsilon;
         
         // The plane normal is the component of pa perpendicular to ba
         Vector3 pa = p - a;
         Vector3 ba = b - a;
         Vector3 n = (pa - (Vector3.Dot(pa, ba) / Vector3.Dot(ba, ba) * ba)).normalized;
 
-        // Find the point of intersection with the plane
-        float t = -1f * Vector3.Dot(p - a, n) / Vector3.Dot(d, n);
+        // Find an intersection with the plane containing point a with normal n
+        float t = 0;
+        if (n.sqrMagnitude < epsilon2)
+        {
+            // There is no component of pa perpendicular to ba, so pa is
+            // parallel to the edge. That implies the point is already on the
+            // edge.
+            //
+            t = 0f;
+        }
+        else
+        {
+            t = -1f * Vector3.Dot(p - a, n) / Vector3.Dot(d, n);
+        }
+
+        if (t < 0f && -t < epsilon)
+        {
+            t = 0f;
+        }
+
         if (t < 0f || float.IsInfinity(t))
         {
             intersection = Vector3.zero;
             return false;
         }
 
+        // Things get interesting when p is exactly on the edge ab. 
+        //
+        // - If we're on the edge and trying to enter the triangle, this edge
+        //   intersection is spurious, so we ignore it
+        //
+        // - If we're trying to leave the triangle, however, then we should be
+        //   continuing to the next triangle, in which case we process this
+        //   edge intersection as t = 0
+        //
+        if (t < epsilon)
+        {
+            Vector3 ca = c - a;
+            if (Vector3.Dot(Vector3.Cross(ba, ca), Vector3.Cross(ba, d)) < 0)
+            {
+                // Leaving the edge
+                intersection = p + t * d;
+                return true;
+            }
+            else
+            {
+                // Entering the edge
+                intersection = Vector3.zero;
+                return false;
+            }
+        }
+
+        // Since we assumed p and d are both in the plane contianing a and b,
+        // the intersection point with the perpendicular plane is on the lane
+        // of a and b.
+        //
+        // If this intersection point is between a and b, then the ray
+        // intersects this edge.
+        //
         Vector3 result = p + t * d;
 
-        // We found an intersection of the point is between a and b
         float ba2 = ba.sqrMagnitude;
-        if ((result - a).sqrMagnitude <= ba2 && (result - b).sqrMagnitude <= ba2)
+        if ((result - a).sqrMagnitude - epsilon2 <= ba2 &&
+            (result - b).sqrMagnitude - epsilon2 <= ba2)
         {
             intersection = result;
             return true;
@@ -146,21 +201,23 @@ public class DebugPoint : MonoBehaviour
             Vector3 edgeIntersect = Vector3.zero;
             int neighbor = -1;
 
-            if (RayLineIntersect(objectPos, objectDir, a, b, out edgeIntersect))
+            if (RayLineIntersect(objectPos, objectDir, a, b, c, out edgeIntersect))
             {
                 neighbor = f.AdjacentAB;
             }
-            else if (RayLineIntersect(objectPos, objectDir, b, c, out edgeIntersect))
+            else if (RayLineIntersect(objectPos, objectDir, b, c, a, out edgeIntersect))
             {
                 neighbor = f.AdjacentBC;
             }
-            else if (RayLineIntersect(objectPos, objectDir, c, a, out edgeIntersect))
+            else if (RayLineIntersect(objectPos, objectDir, c, a, b, out edgeIntersect))
             {
                 neighbor = f.AdjacentCA;
             }
             else
             {
                 Debug.Log("Movement ray does not intersect any edge of current face");
+                Debug.Log(string.Format("Position: {0} Direction: {1}", objectPos, objectDir));
+                Debug.Log(string.Format("Face: {0} {1} {2}", a, b, c));
                 break;
             }
 
