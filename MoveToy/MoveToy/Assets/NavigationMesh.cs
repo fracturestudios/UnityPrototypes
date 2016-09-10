@@ -14,20 +14,55 @@ public class NavigationMesh
         public int B; // Index into mesh.Vertices for vertex B
         public int C; // Index into mesh.Vertices for vertex C
 
+        public int NormalA; // Index into mesh.Normals for normal at vertex A
+        public int NormalB; // Index into mesh.Normals for normal at vertex B
+        public int NormalC; // Index into mesh.Normals for normal at vertex C
+
         public int AdjacentAB; // Index into mesh.Faces for the face which shares edge AB
         public int AdjacentBC; // Index into mesh.Faces for the face which shares edge BC
         public int AdjacentCA; // Index into mesh.Faces for the face which shares edge CA
 
-        public Vector3 Normal; // Cached normal vector pointing out of the face's front
+        public Vector3 FaceNormal; // Normal pointing out of this face
+
+        // Computes the normal for this mesh at the given point
+        public Vector3 NormalAt(Vector3 p, NavigationMesh mesh)
+        {
+            /*
+            Vector3 a = mesh.Vertices[this.A];
+            Vector3 b = mesh.Vertices[this.B];
+            Vector3 c = mesh.Vertices[this.C];
+
+            Vector3 na = mesh.Normals[this.NormalA];
+            Vector3 nb = mesh.Normals[this.NormalB];
+            Vector3 nc = mesh.Normals[this.NormalC];
+
+            Vector3 v0 = b - a, v1 = c - a,v2 = p - a;
+            float d00 = Vector3.Dot(v0, v0);
+            float d01 = Vector3.Dot(v0, v1);
+            float d11 = Vector3.Dot(v1, v1);
+            float d20 = Vector3.Dot(v2, v0);
+            float d21 = Vector3.Dot(v2, v1);
+            float denom = d00 * d11 - d01 * d01;
+            float v = (d11 * d20 - d01 * d21) / denom;
+            float w = (d00 * d21 - d01 * d20) / denom;
+            float u = 1.0f - v - w;
+
+            return na * u + nb * v + nc * w;
+            */
+
+            return this.FaceNormal; // TODO DEBUG
+        }
     }
 
     public List<Vector3> Vertices { get; set; } // All vertices in the mesh
+    public List<Vector3> Normals { get; set; }  // All normals in the mesh
     public List<Face> Faces { get; set; }       // All triangles in this mesh
     public Transform Transform { get; set; }    // The object -> world transformation
 
     public NavigationMesh(Transform transform)
     {
         Vertices = new List<Vector3>();
+        Normals = new List<Vector3>();
         Faces = new List<Face>();
         Transform = transform;
     }
@@ -59,7 +94,7 @@ public class NavigationMesh
 
             // Project the position on this triangle's plane
             Vector3 vec = pos - a;
-            Vector3 projected = vec - Vector3.Dot(vec, f.Normal) * f.Normal + a;
+            Vector3 projected = vec - Vector3.Dot(vec, f.FaceNormal) * f.FaceNormal + a;
 
             // Figure out if the projected point is inside the triangle or not.
             // If it's not, it'll be on the wrong side of exactly one edge.
@@ -142,7 +177,7 @@ public class NavigationMesh
     public Vector3 Project(Vector3 pos, int face)
     {
         Face f = Faces[face];
-        return pos - Vector3.Dot(pos, f.Normal) * f.Normal;
+        return pos - Vector3.Dot(pos, f.FaceNormal) * f.FaceNormal;
     }
 
     // Finds the first point on this mesh the given ray intersects.
@@ -181,7 +216,7 @@ public class NavigationMesh
             Vector3 b = Vertices[f.B];
             Vector3 c = Vertices[f.C];
 
-            Vector3 n = f.Normal;
+            Vector3 n = f.FaceNormal;
 
             // Find a point on the plane defined by the triangle the ray
             // intersects. If the t value is negative, the ray points the wrong way

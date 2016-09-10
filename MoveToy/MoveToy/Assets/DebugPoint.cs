@@ -8,11 +8,14 @@ public class DebugPoint : MonoBehaviour
     bool m_spawned;
     NavigationMesh m_mesh;
     int m_currentFace;
+    Quaternion m_moveDir;
 
     void Start()
     {
         m_spawned = false;
         m_mesh = null;
+        m_currentFace = -1;
+        m_moveDir = Quaternion.identity;
     }
 
     void Spawn()
@@ -30,7 +33,7 @@ public class DebugPoint : MonoBehaviour
         m_mesh = meshes[0];
 
         // Spawn the player anchor point at the top of the navigation mesh
-        Vector3 worldPos = Vector3.up * 10f + Vector3.left * 2f;
+        Vector3 worldPos = Vector3.up * 100f + Vector3.left * 20f;
         Vector3 objectPos = m_mesh.Transform.worldToLocalMatrix.MultiplyPoint3x4(worldPos);
 
         Vector3 objectSpawn;
@@ -38,6 +41,15 @@ public class DebugPoint : MonoBehaviour
 
         Vector3 worldSpawn = m_mesh.Transform.localToWorldMatrix.MultiplyPoint3x4(objectSpawn);
         transform.position = worldSpawn;
+
+        // Rotate the player reference frame to match the current normal
+        Vector3 objectNormal = m_mesh.Faces[m_currentFace].NormalAt(objectSpawn, m_mesh);
+        Quaternion rotation = Quaternion.FromToRotation(Vector3.up, objectNormal);
+        transform.rotation = rotation * transform.rotation;
+
+        // Orient the player WASD directions around the face normal
+        rotation = Quaternion.FromToRotation(Vector3.up, m_mesh.Faces[m_currentFace].FaceNormal);
+        m_moveDir = rotation * m_moveDir;
     }
 
     // Finds the point at which the ray starting at position p and moving in
@@ -79,67 +91,73 @@ public class DebugPoint : MonoBehaviour
             // edge.
             //
             t = 0f;
+            Debug.Log("Point is on the edge, T: 0");
         }
         else
         {
             t = -1f * Vector3.Dot(p - a, n) / Vector3.Dot(d, n);
+            Debug.Log(string.Format("T: {0}", t));
         }
 
         if (t < 0f && -t < epsilon)
         {
             t = 0f;
+            Debug.Log("T is negative but small, T: 0");
         }
 
-        if (t < 0f || float.IsInfinity(t))
+        if (t < 0f)
         {
+            Debug.Log(string.Format("T is negative: {0}", t));
             intersection = Vector3.zero;
             return false;
         }
 
-        // Things get interesting when p is exactly on the edge ab. 
-        //
-        // - If we're on the edge and trying to enter the triangle, this edge
-        //   intersection is spurious, so we ignore it
-        //
-        // - If we're trying to leave the triangle, however, then we should be
-        //   continuing to the next triangle, in which case we process this
-        //   edge intersection as t = 0
-        //
-        if (t < epsilon)
+        if (float.IsInfinity(t))
         {
-            Vector3 ca = c - a;
-            if (Vector3.Dot(Vector3.Cross(ba, ca), Vector3.Cross(ba, d)) < 0)
-            {
-                // Leaving the edge
-                intersection = p + t * d;
-                return true;
-            }
-            else
-            {
-                // Entering the edge
-                intersection = Vector3.zero;
-                return false;
-            }
+            Debug.Log("T is infinity");
+            intersection = Vector3.zero;
+            return false;
         }
 
-        // Since we assumed p and d are both in the plane contianing a and b,
-        // the intersection point with the perpendicular plane is on the lane
-        // of a and b.
+        // Due to limited floating point precision, the ray may actually be
+        // slightly outside the triangle pointing in. If this edge is being
+        // intersected because the ray is entering the triangle, it's spurious
+        // and can be ignored.
         //
-        // If this intersection point is between a and b, then the ray
-        // intersects this edge.
-        //
-        Vector3 result = p + t * d;
-
-        float ba2 = ba.sqrMagnitude;
-        if ((result - a).sqrMagnitude - epsilon2 <= ba2 &&
-            (result - b).sqrMagnitude - epsilon2 <= ba2)
+        Vector3 ca = c - a;
+        if (Vector3.Dot(Vector3.Cross(ba, ca), Vector3.Cross(ba, d)) > 0)
         {
-            intersection = result;
+            Debug.Log("Entering triangle via this edge");
+            intersection = Vector3.zero;
+            return false;
+        }
+
+        // Now we've found an intersection in the plane which contains a and b
+        // and is perpendicular to the plane of the triangle. Due to limited
+        // floating point precision, the intersection point might not actually
+        // lie on the edge, so project the plane intersection point onto the
+        // line of the edge
+        //
+        Vector3 planeIntersect = p + t * d;
+
+        Vector3 v = planeIntersect - a;
+
+        Vector3 edgeIntersect = a + Vector3.Dot(v, ba) / Vector3.Dot(ba, ba) * ba;
+
+        // If this intersection point is between a and b, then the ray
+        // intersects this triangle edge.
+        //
+        float ba2 = ba.sqrMagnitude;
+        if ((edgeIntersect - a).sqrMagnitude - epsilon2 <= ba2 &&
+            (edgeIntersect - b).sqrMagnitude - epsilon2 <= ba2)
+        {
+            intersection = edgeIntersect;
             return true;
         }
         else
         {
+            Debug.Log(string.Format("Result point {0} not between edge {1} {2}: |RA|: {3} |RB|: {4} |AB|: {5}",
+                                    edgeIntersect, a, b, (edgeIntersect - a).magnitude, (edgeIntersect - b).magnitude, (b - a).magnitude));
             intersection = Vector3.zero;
             return false;
         }
@@ -165,30 +183,30 @@ public class DebugPoint : MonoBehaviour
         const float speed = 12f;
         float dt = Time.deltaTime;
 
-		Vector3 forward = transform.rotation * Vector3.forward;
-		Vector3 right = transform.rotation * Vector3.right;
-
         Vector3 worldDelta = Vector3.zero;
 
 		if (Input.GetButton("AnchorForward")) {
-			worldDelta += speed * dt * forward;
+			worldDelta += speed * dt * Vector3.forward;
 		}
 
 		if (Input.GetButton("AnchorBackward")) {
-			worldDelta -= speed * dt * forward;
+			worldDelta -= speed * dt * Vector3.forward;
 		}
 
 		if (Input.GetButton("AnchorLeft")) {
-			worldDelta -= speed * dt * right;
+			worldDelta -= speed * dt * Vector3.right;
 		}
 
 		if (Input.GetButton("AnchorRight")) {
-			worldDelta += speed * dt * right;
+			worldDelta += speed * dt * Vector3.right;
 		}
+
+        worldDelta = m_moveDir * worldDelta;
+
+        Vector3 objectPos = m_mesh.Transform.worldToLocalMatrix.MultiplyPoint3x4(transform.position);
 
         while (worldDelta.sqrMagnitude > Mathf.Epsilon)
         {
-            Vector3 objectPos = m_mesh.Transform.worldToLocalMatrix.MultiplyPoint3x4(transform.position);
             Vector3 objectDelta = m_mesh.Transform.worldToLocalMatrix.MultiplyVector(worldDelta);
             Vector3 objectDir = objectDelta.normalized;
 
@@ -235,6 +253,8 @@ public class DebugPoint : MonoBehaviour
             // - Move the player to the edge
             // - Rotate the player around the edge to orient with the next
             //   face's normal
+            // - Rotate the player's movement directions around the new face's
+            //   face normal
             // - Subtract the travelled distance from the total distance
             //   left to travel
             // - Continue on to the adjacent face
@@ -242,15 +262,29 @@ public class DebugPoint : MonoBehaviour
             m_currentFace = neighbor;
             NavigationMesh.Face adjacent = m_mesh.Faces[m_currentFace];
 
-            Vector3 objectMovement = edgeIntersect - objectPos;
-            worldDelta = worldDelta - m_mesh.Transform.localToWorldMatrix.MultiplyVector(objectMovement);
+            Debug.Log(string.Format("Moving from {0} {1} {2} to {3} {4} {5}",
+                                    m_mesh.Vertices[f.A],
+                                    m_mesh.Vertices[f.B],
+                                    m_mesh.Vertices[f.C],
+                                    m_mesh.Vertices[adjacent.A],
+                                    m_mesh.Vertices[adjacent.B],
+                                    m_mesh.Vertices[adjacent.C]));
+
+            float deltaRatio = (worldDelta.magnitude - m_mesh.Transform.localToWorldMatrix.MultiplyVector(edgeIntersect - objectPos).magnitude)
+                             / worldDelta.magnitude;
+            worldDelta *= deltaRatio;
 
             objectPos = edgeIntersect;
             transform.position = m_mesh.Transform.localToWorldMatrix.MultiplyPoint3x4(objectPos);
 
-            Quaternion rotation = Quaternion.FromToRotation(f.Normal, adjacent.Normal);
+            Quaternion rotation = Quaternion.FromToRotation(f.NormalAt(objectPos, m_mesh),
+                                                            adjacent.NormalAt(objectPos, m_mesh));
             transform.rotation = rotation * transform.rotation;
             worldDelta = rotation * worldDelta;
+
+            rotation = Quaternion.FromToRotation(m_moveDir * Vector3.up, adjacent.FaceNormal);
+            m_moveDir = rotation * m_moveDir;
         }
 	}
 }
+

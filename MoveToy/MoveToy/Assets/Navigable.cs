@@ -111,8 +111,9 @@ public class Navigable : MonoBehaviour
 
     private void BuildNavigationMesh(NavigationMesh navMesh, Mesh mesh)
     {
-        // Add the mesh's vertices to the navigation mesh
+        // Add the mesh's vertices/normals to the navigation mesh directly
         navMesh.Vertices.AddRange(mesh.vertices);
+        navMesh.Normals.AddRange(mesh.normals);
 
         // Add the mesh's triangles to the navigation mesh
         if (mesh.triangles.Length % 3 != 0)
@@ -127,20 +128,25 @@ public class Navigable : MonoBehaviour
             int b = mesh.triangles[3 * i + 1];
             int c = mesh.triangles[3 * i + 2];
 
-            Vector3 na = mesh.normals[a];
-            Vector3 nb = mesh.normals[b];
-            Vector3 nc = mesh.normals[c];
-
             NavigationMesh.Face f;
+
             f.A = a;
             f.B = b;
             f.C = c;
+
+            f.NormalA = a;
+            f.NormalB = b;
+            f.NormalC = c;
 
             f.AdjacentAB = -1;
             f.AdjacentBC = -1;
             f.AdjacentCA = -1;
 
-            f.Normal = (na + nb + nc).normalized;
+            Vector3 va = mesh.vertices[a];
+            Vector3 vb = mesh.vertices[b];
+            Vector3 vc = mesh.vertices[c];
+
+            f.FaceNormal = Vector3.Cross(vb - va, vc - va).normalized;
 
             navMesh.Faces.Add(f);
         }
@@ -249,9 +255,9 @@ public class Navigable : MonoBehaviour
             vertices.Add(navMesh.Vertices[f.B]);
             vertices.Add(navMesh.Vertices[f.C]);
 
-            normals.Add(f.Normal);
-            normals.Add(f.Normal);
-            normals.Add(f.Normal);
+            normals.Add(f.FaceNormal);
+            normals.Add(f.FaceNormal);
+            normals.Add(f.FaceNormal);
 
             triangles.Add(vertices.Count - 3);
             triangles.Add(vertices.Count - 2);
