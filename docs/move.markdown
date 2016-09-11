@@ -16,21 +16,23 @@ When the player is "walking," they are attached to a surface, and move over the 
 Players in a "walking" state always stay attached to the surface, and when they walk off an edge, they continue onto the adjacent face along that edge.
 Players never "fall off" an object while in the walking state.
 
-This is done using an anchor point projected onto the navigation surface.
-When the player moves, we internally move the anchor point along the surface, rolling over to the adjacent edge as needed.
+This is done using an anchor point projected onto a face of the navigation surface.
+When the player moves, we internally move the anchor point along the face, rolling over to adjacent faces as needed.
 The movement direction is calculated by projecting the player's look vector onto the edge which houses the anchor point.
 
-When moving the player over an edge this way, the anchor point is moved to equivalent point on the adjacent face.
+When the player walks over an edge, the anchor point is moved to the equivalent point on the adjacent face.
 We subtract the distance the player already moved to get to the edge, and process the remaining distance along the new face.
 This happens as many times as necessary until the player has moved the complete distance.
 
-After moving the player, we compute the normal from the surface at the anchor point, and use that to position and orient the player.
-To smooth the player orientation when walking over a sharp edge, we sweep out multiple points around the anchor point and compute normals at each point.
-We average the results together to obtain a smoothed normal to orient the player.
-This normal swings gradually as the player rounds an edge, at a speed proportional to how far we sweep, and with precision proportional to the number of sweeped points.
+After moving the player, we compute the normal from the surface at the anchor point, and use that to orient the player.
+This surface normal is computed by interpolating the face's vertex normals.
+As a result, if the player walks across a curve surface, the player orientation matches the curve.
+
+When the player walks across a sharp edge (i.e. the normal at the same edge is different for the two adjacent faces, like the edge of a cube), the player's orientation smoothly interpolates around the edge until the player is oriented with the edge on the next face.
+This means the player rounds corners smoothly.
 
 Note the pawn's look direction is relative to the pawn's orientation, as if the look direction were the head and the pawn's orientation were the body.
-When the player rounds a corner, the look direction rounds the corner too.
+When the player rounds a corner, the look direction rounds the corner too, but the look direction is the same relative to the player pawn.
 
 ### Jumping
 
