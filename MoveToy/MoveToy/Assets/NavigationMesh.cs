@@ -27,7 +27,6 @@ public class NavigationMesh
         // Computes the normal for this mesh at the given point
         public Vector3 NormalAt(Vector3 p, NavigationMesh mesh)
         {
-            /*
             Vector3 a = mesh.Vertices[this.A];
             Vector3 b = mesh.Vertices[this.B];
             Vector3 c = mesh.Vertices[this.C];
@@ -48,9 +47,6 @@ public class NavigationMesh
             float u = 1.0f - v - w;
 
             return na * u + nb * v + nc * w;
-            */
-
-            return this.FaceNormal; // TODO DEBUG
         }
     }
 

@@ -235,6 +235,8 @@ public class DebugPoint : MonoBehaviour
         int iters = 0;
         while (Mathf.Abs(worldDistance) > Mathf.Epsilon)
         {
+            Matrix4x4 normalLocalToWorld = m_mesh.Transform.localToWorldMatrix.inverse.transpose;
+
             Vector3 worldDir = m_moveDir * playerDir.normalized;
 
             Vector3 objectPos = m_mesh.Transform.worldToLocalMatrix.MultiplyPoint3x4(transform.position);
@@ -281,8 +283,13 @@ public class DebugPoint : MonoBehaviour
             // If we didn't hit an edge, move the full distance and be done
             if (objectDelta.sqrMagnitude < (edgeIntersect - objectPos).sqrMagnitude)
             {
+                // Move to the target point
                 transform.position = m_mesh.Transform.localToWorldMatrix.MultiplyPoint3x4(objectPos + objectDelta);
                 worldDistance = 0f;
+
+                // Rotate the player to 
+                Vector3 target = normalLocalToWorld.MultiplyVector(f.NormalAt(objectPos + objectDelta, m_mesh));
+                transform.rotation = Quaternion.FromToRotation(transform.up, target) * transform.rotation;
 
                 break;
             }
@@ -298,14 +305,16 @@ public class DebugPoint : MonoBehaviour
             Vector3 worldDelta = m_mesh.Transform.localToWorldMatrix.MultiplyVector(edgeIntersect - objectPos);
             worldDistance -= worldDelta.magnitude;
 
-            // Rotate the player reference frame around the new face normal
-            Vector3 worldNormalBefore = m_mesh.Transform.localToWorldMatrix.inverse.transpose.MultiplyVector(f.FaceNormal);
-            Vector3 worldNormalAfter = m_mesh.Transform.localToWorldMatrix.inverse.transpose.MultiplyVector(adjacent.FaceNormal);
+            // Rotate the player movement frame to the new face normal
+            Vector3 worldNormalBefore = normalLocalToWorld.MultiplyVector(f.FaceNormal);
+            Vector3 worldNormalAfter = normalLocalToWorld.MultiplyVector(adjacent.FaceNormal);
             Quaternion rotation = Quaternion.FromToRotation(worldNormalBefore, worldNormalAfter);
             m_moveDir = rotation * m_moveDir;
 
-            // Rotate the player to match the point normal on the new face
-            transform.rotation = m_moveDir; // DEBUG
+            // Rotate the player's actual orientation to match the new point normal
+            Vector3 worldNormal = normalLocalToWorld.MultiplyVector(adjacent.NormalAt(edgeIntersect, m_mesh));
+            rotation = Quaternion.FromToRotation(transform.up, worldNormal);
+            transform.rotation = rotation * transform.rotation;
 
             if (++iters > 100)
             {
